@@ -65,7 +65,7 @@ flg_FORCE=0
 [ \( $# -gt 0 \) -a \( "_$1" = '_-f' \) ] && flg_FORCE=1
 
 # --- cURLコマンド存在チェック ---------------------------------------
-which curl >/dev/null
+type curl >/dev/null 2>&1
 [ $? -eq 0 ] || error_exit 3 'curl command not found'
 
 # --- サイト上のファイルのタイムスタンプを取得 -----------------------
@@ -114,9 +114,9 @@ curl -s $url_ZIPCSVZIP > $tmpf_zipcsvzip
 # --- 郵便番号辞書ファイル作成 ---------------------------------------
 unzip -p $tmpf_zipcsvzip                                          |
 # 日本郵便 郵便番号-住所 CSVデータ(Shift_JIS)                     #
-if   which iconv >/dev/null; then                                 #
+if   type iconv >/dev/null 2>&1; then                             #
   iconv -c -f SHIFT_JIS -t UTF-8                                  #
-elif which nkf   >/dev/null; then                                 #
+elif type nkf   >/dev/null 2>&1; then                             #
   nkf -Sw80                                                       #
 else                                                              #
   error_exit 6 'No KANJI convertors found (iconv or nkf)'         #
