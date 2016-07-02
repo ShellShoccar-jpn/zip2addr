@@ -4,7 +4,7 @@
 #
 # MKZIPDIC_KENALL.SH
 # 日本郵便公式の郵便番号住所CSVから、本システム用の辞書を作成（地域名）
-# Written by Rich Mikan(richmikan[at]richlab.org) at 2014/01/18
+# Written by Rich Mikan(richmikan[at]richlab.org) at 2016/07/02
 #
 # Usage : mkzipdic.sh -f
 #         -f ... ・サイトにあるCSVファイルのタイプスタンプが、
@@ -65,11 +65,16 @@ flg_FORCE=0
 [ \( $# -gt 0 \) -a \( "_$1" = '_-f' \) ] && flg_FORCE=1
 
 # --- cURLコマンド存在チェック ---------------------------------------
-type curl >/dev/null 2>&1
-[ $? -eq 0 ] || error_exit 3 'curl command not found'
+type curl >/dev/null 2>&1 || type wget >/dev/null 2>&1 || {
+  error_exit 3 'No HTTP-GET/POST command found.'
+}
 
 # --- サイト上のファイルのタイムスタンプを取得 -----------------------
-timestamp_web=$(curl -sLI $url_ZIPCSVZIP                                     |
+timestamp_web=$(if type curl >/dev/null 2>&1; then                           #
+                  curl -sLI        $url_ZIPCSVZIP                            #
+                else                                                         #
+                  wget -S --spider $url_ZIPCSVZIP | sed 's/^ *//'            #
+                fi                                                           |
                 awk '                                                        #
                   BEGIN{                                                     #
                     status = 0;                                              #
@@ -108,18 +113,26 @@ while [ $flg_FORCE -eq 0 ]; do
 done
 
 # --- 郵便番号CSVデータファイル(Zip形式)ダウンロード -----------------
-curl -s $url_ZIPCSVZIP > $tmpf_zipcsvzip
+if   type curl >/dev/null 2>&1; then
+  curl -s      $url_ZIPCSVZIP > $tmpf_zipcsvzip
+else
+  wget -q -O - $url_ZIPCSVZIP > $tmpf_zipcsvzip
+fi
 [ $? -eq 0 ] || error_exit 5 'Failed to download the zipcode CSV file'
 
 # --- 郵便番号辞書ファイル作成 ---------------------------------------
-unzip -p $tmpf_zipcsvzip                                          |
+if   type unzip >/dev/null; then                                  #
+  unzip -p $tmpf_zipcsvzip                                        #
+else                                                              #
+  error_exit 6 'No Zip archive extracter found (unzip)'           #
+fi                                                                |
 # 日本郵便 郵便番号-住所 CSVデータ(Shift_JIS)                     #
 if   type iconv >/dev/null 2>&1; then                             #
   iconv -c -f SHIFT_JIS -t UTF-8                                  #
 elif type nkf   >/dev/null 2>&1; then                             #
   nkf -Sw80                                                       #
 else                                                              #
-  error_exit 6 'No KANJI convertors found (iconv or nkf)'         #
+  error_exit 7 'No KANJI convertors found (iconv or nkf)'         #
 fi                                                                |
 # 日本郵便 郵便番号-住所 CSVデータ(UTF-8変換済)                   #
 $dir_MINE/../commands/parsrc.sh                                   | # CSVパーサー(自作コマンド)
