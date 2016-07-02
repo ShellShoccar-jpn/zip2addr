@@ -64,7 +64,7 @@ tmpf_zipdic=$(mktemp -t "${0##*/}.XXXXXXXX")
 flg_FORCE=0
 [ \( $# -gt 0 \) -a \( "_$1" = '_-f' \) ] && flg_FORCE=1
 
-# --- cURLコマンド存在チェック ---------------------------------------
+# --- Webアクセスコマンド存在チェック --------------------------------
 type curl >/dev/null 2>&1 || type wget >/dev/null 2>&1 || {
   error_exit 3 'No HTTP-GET/POST command found.'
 }
