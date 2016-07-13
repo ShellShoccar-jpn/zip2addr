@@ -158,7 +158,7 @@ awk 'BEGIN{z="#"; p="generated"; c="at"; t="'$timestamp_web'"; }  #
 sed 's/（.*//'                                                    | # 地域名住所文字列で小括弧以降は使えないので除去する
 sed 's/以下に.*//'                                                > $tmpf_zipdic # 「以下に」の場合も同様
 # 1:郵便番号 2:都道府県名 3:市区町村名 4:町名
-[ -s $tmpf_zipdic ] || error_exit 9 'Failed to make the zipcode dictionary file'
+[ -s $tmpf_zipdic ] || error_exit 10 'Failed to make the zipcode dictionary file'
 mv $tmpf_zipdic "$file_ZIPDIC"
 [ "$flg_SUEXECMODE" -eq 0 ] && chmod go+r "$file_ZIPDIC" # suEXECで動いていない場合はhttpdにも読めるようにする
 
