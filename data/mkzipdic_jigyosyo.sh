@@ -4,7 +4,7 @@
 #
 # MKZIPDIC_JIGYOSYO.SH
 # 日本郵便公式の郵便番号住所CSVから、本システム用の辞書を作成（事業所名）
-# Written by Rich Mikan(richmikan[at]richlab.org) at 2014/07/14
+# Written by Rich Mikan(richmikan[at]richlab.org) at 2016/07/14
 #
 # Usage : mkzipdic.sh -f
 #         -f ... ・サイトにあるCSVファイルのタイプスタンプが、
