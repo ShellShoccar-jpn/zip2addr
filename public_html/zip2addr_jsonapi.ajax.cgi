@@ -1,10 +1,10 @@
-#! /bin/sh
+#!/bin/sh
 
 ######################################################################
 #
 # ZIP2ADDR_JSONAPI.AJAX.CGI
 # 郵便番号―住所検索(よそのJSON形式Web API利用バージョン)
-# Written by Rich Mikan(richmikan[at]richlab.org) at 2014/01/10
+# Written by Rich Mikan(richmikan[at]richlab.org) at 2017/01/31
 #
 # [入力]
 # ・[CGI変数]
@@ -24,10 +24,10 @@
 
 # --- 変数定義 -------------------------------------------------------
 dir_MINE="$(d=${0%/*}/; [ "_$d" = "_$0/" ] && d='./'; cd "$d"; pwd)" # このshのパス
-readonly url_ZIPAPI='http://api.postalcode.jp/v1/zipsearch'          # 郵便番号辞書APIのURL(グルーブテクノロジー)
+readonly url_ZIPAPI='http://zipcloud.ibsnet.co.jp/api/search'        # 郵便番号辞書APIのURL(株式会社アイビス)
 
 # --- ファイルパス ---------------------------------------------------
-PATH='/usr/local/bin:/usr/bin:/bin'
+PATH="$(command -p getconf PATH):${PATH:-}"
 
 # --- エラー終了関数定義 ---------------------------------------------
 error500_exit() {
@@ -68,13 +68,13 @@ zipcode=$(echo "_${QUERY_STRING:-}" | # 環境変数で渡ってきたCGI変数�
 [ -n "$zipcode" ] || error400_exit 'invalid zipcode'
 
 # --- JSON形式文字列を生成して返す -----------------------------------
-curl -s "${url_ZIPAPI}?format=json&oe=UTF-8&zipcode=${zipcode}" | # Web APIから住所を検索し、結果をJSONで取得
+curl -s "${url_ZIPAPI}?zipcode=${zipcode}"                      | # Web APIから住所を検索し、結果をJSONで取得
 tr -d '\r'                                                      | # CR+LFをLFに変換
-$dir_MINE/../commands/parsrj.sh                                 | # JSONを絶対JSONPath形式に正規化(自作プログラム)
-awk '$1~/\.zipcode$/    {z = $2;}                               # # JSON中の郵便番号データを抽出
-     $1~/\.prefecture$/ {p = $2;}                               # # JSON中の都道府県名データを抽出
-     $1~/\.city$/       {c = $2;}                               # # JSON中の市区町村名データを抽出
-     $1~/\.town$/       {t = $2;}                               # # JSON中の町名データを抽出
+parsrj.sh                                                       | # JSONを絶対JSONPath形式に正規化(自作プログラム)
+awk '$1~/\.results\[0\]\.zipcode$/  {z = $2;}                   # # JSON中の郵便番号データを抽出
+     $1~/\.results\[0\]\.address1$/ {p = $2;}                   # # JSON中の都道府県名データを抽出
+     $1~/\.results\[0\]\.address2$/ {c = $2;}                   # # JSON中の市区町村名データを抽出
+     $1~/\.results\[0\]\.address3$/ {t = $2;}                   # # JSON中の町名データを抽出
      END                {print z,p,c,t;}'                       | # 次コマンドに出力
 awk '{print (NF==4) ? $0 : "";}'                                | # 住所が見つからなければ空行を出力する
 while read zip pref city town; do                                 # HTTPヘッダーと共に、JSON文字列化した住所データを出力する
