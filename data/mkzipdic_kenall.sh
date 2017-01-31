@@ -1,10 +1,10 @@
-#! /bin/sh
+#!/bin/sh
 
 #####################################################################
 #
 # MKZIPDIC_KENALL.SH
 # 日本郵便公式の郵便番号住所CSVから、本システム用の辞書を作成（地域名）
-# Written by Rich Mikan(richmikan[at]richlab.org) at 2016/07/14
+# Written by Rich Mikan(richmikan[at]richlab.org) at 2017/01/31
 #
 # Usage : mkzipdic.sh -f
 #         -f ... ・サイトにあるCSVファイルのタイプスタンプが、
@@ -31,7 +31,7 @@ readonly url_ZIPCSVZIP=http://www.post.japanpost.jp/zipcode/dl/oogaki/zip/ken_al
 readonly flg_SUEXECMODE=0                                            # サーバーがsuEXECモードで動いているなら1
 
 # --- ファイルパス ---------------------------------------------------
-PATH='/usr/local/tukubai/bin:/usr/local/bin:/usr/bin:/bin'
+PATH="$(command -p getconf PATH):${PATH:-}"
 
 # --- 終了関数定義(終了前に一時ファイル削除) -------------------------
 exit_trap() {
@@ -62,24 +62,14 @@ tmpf_zipdic=$(mktemp -t "${0##*/}.XXXXXXXX")
 
 # --- 引数チェック ---------------------------------------------------
 flg_FORCE=0
-case "${1:-}" in '-f') flg_FORCE=1;; esac
+[ \( $# -gt 0 \) -a \( "_$1" = '_-f' \) ] && flg_FORCE=1
 
-# --- Webアクセスコマンド存在チェック --------------------------------
-type curl >/dev/null 2>&1 || type wget >/dev/null 2>&1 || {
-  error_exit 3 'No HTTP-GET/POST command found.'
-}
-
-# --- ZIP展開コマンド存在チェック ------------------------------------
-type unzip >/dev/null 2>&1 || type gunzip >/dev/null 2>&1 || {
-  error_exit 4 'No ZIP extracter command found.'
-}
+# --- cURLコマンド存在チェック ---------------------------------------
+which curl >/dev/null
+[ $? -eq 0 ] || error_exit 3 'curl command not found'
 
 # --- サイト上のファイルのタイムスタンプを取得 -----------------------
-timestamp_web=$(if type curl >/dev/null 2>&1; then                           #
-                  curl -sLI        $url_ZIPCSVZIP                            #
-                else                                                         #
-                  wget -S --spider $url_ZIPCSVZIP | sed 's/^ *//'            #
-                fi                                                           |
+timestamp_web=$(curl -sLI $url_ZIPCSVZIP                                     |
                 awk '                                                        #
                   BEGIN{                                                     #
                     status = 0;                                              #
@@ -99,8 +89,8 @@ timestamp_web=$(if type curl >/dev/null 2>&1; then                           #
                       print "NOT_FOUND";                                     #
                     }                                                        #
                   }'                                                         )
-[ "$timestamp_web" != 'NOT_FOUND' ] || error_exit 5 'The zipcode CSV file not found on the web'
-printf '%s\n' "$timestamp_web" | grep -Eq '^[0-9]{14}$'
+[ "$timestamp_web" != 'NOT_FOUND' ] || error_exit 4 'The zipcode CSV file not found on the web'
+echo "_$timestamp_web" | sed '1s/_//' | grep '^[0-9]\{14\}$' >/dev/null
 [ $? -eq 0 ] || timestamp_web=$(TZ=UTC/0 date +%Y%m%d%H%M%S) # 取得できなければ現在日時を入れる
 
 # --- 手元の辞書ファイルのタイムスタンプと比較し、更新必要性確認 -----
@@ -109,7 +99,8 @@ while [ $flg_FORCE -eq 0 ]; do
   [ ! -f "$file_ZIPDIC" ] && break
   # その辞書ファイル内にタイムスタンプは記載されているか?
   timestamp_local=$(head -n 1 "$file_ZIPDIC" | awk '{print $NF}')
-  printf '%s\n' "$timestamp_local" | grep -Eq '^[0-9]{14}$' || break
+  echo "_$timestamp_local" | sed '1s/_//' | grep '^[0-9]\{14\}$' >/dev/null
+  [ $? -eq 0 ] || break
   # サイト上のファイルは手元のファイルよりも新しいか?
   [ $timestamp_web -gt $timestamp_local ] && break
   # そうでなければ何もせず終了(正常)
@@ -117,30 +108,18 @@ while [ $flg_FORCE -eq 0 ]; do
 done
 
 # --- 郵便番号CSVデータファイル(Zip形式)ダウンロード -----------------
-if   type curl >/dev/null 2>&1; then
-  curl -s      $url_ZIPCSVZIP > $tmpf_zipcsvzip
-else
-  wget -q -O - $url_ZIPCSVZIP > $tmpf_zipcsvzip
-fi
-[ $? -eq 0 ] || error_exit 6 'Failed to download the zipcode CSV file'
+curl -s $url_ZIPCSVZIP > $tmpf_zipcsvzip
+[ $? -eq 0 ] || error_exit 5 'Failed to download the zipcode CSV file'
 
 # --- 郵便番号辞書ファイル作成 ---------------------------------------
-if   type unzip  >/dev/null; then                                 #
-  unzip -p $tmpf_zipcsvzip                                        #
-elif type gunzip >/dev/null; then                                 #
-  gunzip <$tmpf_zipcsvzip 2>/dev/null || {                        #
-    error_exit 7 'No Zip archive extracter found (unzip)'         #
-  }                                                               #
-else                                                              #
-  error_exit 8 'No Zip archive extracter found (unzip or gunzip)' #
-fi                                                                |
+unzip -p $tmpf_zipcsvzip                                          |
 # 日本郵便 郵便番号-住所 CSVデータ(Shift_JIS)                     #
-if   type iconv >/dev/null 2>&1; then                             #
+if   which iconv >/dev/null; then                                 #
   iconv -c -f SHIFT_JIS -t UTF-8                                  #
-elif type nkf   >/dev/null 2>&1; then                             #
+elif which nkf   >/dev/null; then                                 #
   nkf -Sw80                                                       #
 else                                                              #
-  error_exit 9 'No KANJI convertors found (iconv or nkf)'         #
+  error_exit 6 'No KANJI convertors found (iconv or nkf)'         #
 fi                                                                |
 # 日本郵便 郵便番号-住所 CSVデータ(UTF-8変換済)                   #
 $dir_MINE/../commands/parsrc.sh                                   | # CSVパーサー(自作コマンド)
@@ -158,7 +137,7 @@ awk 'BEGIN{z="#"; p="generated"; c="at"; t="'$timestamp_web'"; }  #
 sed 's/（.*//'                                                    | # 地域名住所文字列で小括弧以降は使えないので除去する
 sed 's/以下に.*//'                                                > $tmpf_zipdic # 「以下に」の場合も同様
 # 1:郵便番号 2:都道府県名 3:市区町村名 4:町名
-[ -s $tmpf_zipdic ] || error_exit 10 'Failed to make the zipcode dictionary file'
+[ -s $tmpf_zipdic ] || error_exit 7 'Failed to make the zipcode dictionary file'
 mv $tmpf_zipdic "$file_ZIPDIC"
 [ "$flg_SUEXECMODE" -eq 0 ] && chmod go+r "$file_ZIPDIC" # suEXECで動いていない場合はhttpdにも読めるようにする
 
