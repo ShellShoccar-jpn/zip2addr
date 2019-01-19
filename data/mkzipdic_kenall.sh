@@ -4,7 +4,7 @@
 #
 # MKZIPDIC_KENALL.SH
 # 日本郵便公式の郵便番号住所CSVから、本システム用の辞書を作成（地域名）
-# Written by Rich Mikan(richmikan[at]richlab.org) at 2017/01/31
+# Written by Rich Mikan(richmikan[at]richlab.org) at 2019-01-19
 #
 # Usage : mkzipdic.sh -f
 #         -f ... ・サイトにあるCSVファイルのタイプスタンプが、
@@ -26,7 +26,7 @@
 # --- 変数定義 -------------------------------------------------------
 dir_MINE="$(d=${0%/*}/; [ "_$d" = "_$0/" ] && d='./'; cd "$d"; pwd)" # このshのパス
 readonly file_ZIPDIC="$dir_MINE/ken_all.txt"                         # 郵便番号辞書ファイルのパス
-readonly url_ZIPCSVZIP=http://www.post.japanpost.jp/zipcode/dl/oogaki/zip/ken_all.zip
+readonly url_ZIPCSVZIP=https://www.post.japanpost.jp/zipcode/dl/oogaki/zip/ken_all.zip
                                                                      # 日本郵便 郵便番号-住所 CSVデータ (Zip形式) URL
 readonly flg_SUEXECMODE=0                                            # サーバーがsuEXECモードで動いているなら1
 
@@ -115,7 +115,7 @@ curl -s $url_ZIPCSVZIP > $tmpf_zipcsvzip
 unzip -p $tmpf_zipcsvzip                                          |
 # 日本郵便 郵便番号-住所 CSVデータ(Shift_JIS)                     #
 if   which iconv >/dev/null; then                                 #
-  iconv -c -f SHIFT_JIS -t UTF-8                                  #
+  iconv -c -f CP932 -t UTF-8                                      #
 elif which nkf   >/dev/null; then                                 #
   nkf -Sw80                                                       #
 else                                                              #
